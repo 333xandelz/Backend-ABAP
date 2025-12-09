@@ -24,8 +24,12 @@ Este repositório pode incluir:
 
 ```
 Backend-ABAP/
-├── README.md           # Documentação principal do projeto
-└── src/                # Códigos ABAP e utilitários (a ser organizado conforme necessário)
+└── README.md           # Documentação principal do projeto
+
+# Estrutura futura quando projetos forem adicionados:
+# ├── src/              # Códigos ABAP e utilitários
+# ├── exemplos/         # Exemplos de uso
+# └── docs/             # Documentação adicional
 ```
 
 ## 💻 Tecnologias Utilizadas
