@@ -1,7 +1,6 @@
 # Backend-ABAP
 
 [![SAP](https://img.shields.io/badge/SAP-ABAP-0FAAFF?style=flat-square&logo=sap)](https://www.sap.com/)
-[![License](https://img.shields.io/badge/license-MIT-green?style=flat-square)](LICENSE)
 
 ## 📋 Sobre o Projeto
 
@@ -26,7 +25,7 @@ Este repositório pode incluir:
 ```
 Backend-ABAP/
 ├── README.md           # Documentação principal do projeto
-└── [projetos]          # Diretórios específicos de cada projeto/utilitário
+└── src/                # Códigos ABAP e utilitários (a ser organizado conforme necessário)
 ```
 
 ## 💻 Tecnologias Utilizadas
@@ -75,7 +74,7 @@ Ao contribuir ou utilizar este código:
 
 ## 📄 Licença
 
-Este projeto está sob a licença MIT. Veja o arquivo [LICENSE](LICENSE) para mais detalhes.
+Este projeto é de código aberto e está disponível para uso e contribuições da comunidade.
 
 ## 👤 Autor
 
