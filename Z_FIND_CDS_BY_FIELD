@@ -1,0 +1,79 @@
+@AbapCatalog.viewEnhancementCategory: [ #NONE ]
+@AccessControl.authorizationCheck: #NOT_REQUIRED
+@EndUserText.label: 'Busca CDS por Campo, Status, etc.'
+@Metadata.ignorePropagatedAnnotations: true
+@ObjectModel.usageType: { serviceQuality: #X, sizeCategory: #M, dataClass: #MIXED }
+
+define view entity Z_FIND_CDS_BY_FIELD
+  as select from    dd03l           as FieldMetadata
+
+    // Join fundamental: Conecta o campo (DD03L) à CDS View (Dependency)
+    inner join      ddldependency   as CDSDependency
+      on FieldMetadata.tabname = CDSDependency.objectname
+
+    // 1. Pega o Pacote (DevClass): Essencial para separar o que é Z (Custom) do que é Standard (SAP)
+    left outer join tadir           as Repository
+      on  Repository.obj_name = CDSDependency.ddlname
+      and Repository.pgmid    = 'R3TR'
+      and Repository.object   = 'DDLS'
+
+    // 2. Traz a descrição "humana" da View no idioma de quem está logado
+    left outer join dd02t           as ViewText
+      on  ViewText.tabname    = CDSDependency.objectname
+      and ViewText.ddlanguage = $session.system_language
+      and ViewText.as4local   = 'A'
+
+    // 3. Traz a descrição do Campo para quem não sabe o código técnico (ex: busca por "Material" em vez de "MATNR")
+    left outer join dd04t           as FieldText
+      on  FieldText.rollname   = FieldMetadata.rollname
+      and FieldText.ddlanguage = $session.system_language
+      and FieldText.as4local   = 'A'
+
+    // 4. Status de Liberação (API State): A fonte da verdade sobre se a CDS é segura para uso
+    // Baseado nas imagens fornecidas, estamos pegando dados de criação e release.
+    left outer join ars_w_api_state as ApiState
+      on  ApiState.object_name = CDSDependency.ddlname
+      and ApiState.object_type = 'DDLS'
+
+{
+      // Campos principais para identificar a CDS View
+  key CDSDependency.ddlname          as CDSViewName,    // O nome da Entity (ex: I_Product)
+  key FieldMetadata.fieldname        as FieldName,      // O campo que você buscou
+
+      CDSDependency.objectname       as SQLViewName,    // O nome na SE11 (ex: IPRODUCT)
+      ViewText.ddtext                as CDSDescription, // O que essa view faz?
+      Repository.devclass            as PackageName,    // Onde ela está guardada (Pacote)
+
+      // Tradução dos status oficiais solicitados
+      // Inclua conforme sua base de dados os status que você tem na sua tabela ApiState
+      case ApiState.release_state
+        when 'RELEASED'                     then 'LIBERADA (OFICIAL SAP)'
+        when 'DEPRECATED'                   then 'OBSOLETA (NÃO USAR)'
+        when 'RELEASED_WITH_FEATURE_TOGGLE' then 'LIBERADA (COM TOGGLE)'
+        when 'NOT_TO_BE_RELEASED_STABLE'    then 'ESTÁVEL (USO INTERNO)'
+        when 'NOT_TO_BE_RELEASED'           then 'NÃO LIBERADA (RISCO ALTO)'
+        else                                     'SEM CONTRATO DE ESTABILIDADE'
+      end                            as ReleaseStatus,   // Status traduzido da liberação
+
+      // Dados adicionais sobre a liberação da CDS "
+      ApiState.software_release_name as SoftwareRelease,  // Versão do Software (ex: 1911, 2020)
+      ApiState.created_at            as ReleaseCreatedAt, // Data de criação da liberação
+      ApiState.created_by            as ReleaseCreatedBy, // Quem criou a liberação
+      ApiState.last_changed_at       as ReleaseChangedAt, // Última modificação na liberação
+      ApiState.last_changed_by       as ReleaseChangedBy, // Quem fez a última modificação na liberação
+
+      // Detalhes do campo buscado
+      FieldText.ddtext               as FieldDescription, // Descrição do campo
+      FieldMetadata.rollname         as DataElement,      // Elemento de dados associado
+      FieldMetadata.keyflag          as IsKeyField,       // Se tiver 'X', é chave primária
+      FieldMetadata.datatype         as DataType,         // Tipo de dado (ex: CHAR, NUMC)
+      FieldMetadata.leng             as Length,           // Comprimento do campo
+      FieldMetadata.decimals         as Decimals,         // Casas decimais (se aplicável)
+
+      // Status da View (Ativa/Inativa)
+      CDSDependency.state            as Status            // 'A' = Ativa, 'I' = Inativa
+}
+
+where CDSDependency.state      = 'A'    // Traz apenas views que estão Ativas
+  and CDSDependency.objecttype = 'VIEW' // Confirmação de segurança que é uma View
+  and FieldMetadata.as4local   = 'A'    // O campo também deve estar ativo
